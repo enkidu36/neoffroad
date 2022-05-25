@@ -12,7 +12,7 @@
 (def category-header "Category")
 (def division-header "Division")
 (def signature-header "Signature")
-(def header-names ["Registrant(s)" "Team Name" "Category" "Division"])
+(def header-names [rider-header team-header category-header division-header])
 
 (defn read-file [infile]
   (with-open [r (io/reader infile)]
@@ -29,7 +29,6 @@
 (defn get-ndx [col-names [header]]
   (map #(.indexOf header %) col-names))
 
-
 (defn remove-columns [header-names data]
   (let [indexes (get-ndx header-names data)]
     (map #(filter-cols indexes %) data)))
@@ -41,7 +40,6 @@
                     (conj bib-header))
          body (map #(-> % (conj "--") (conj "--") (conj "")) rest)]
      (conj body header)))
-
 
 (defn sort-by-name [name [hdr & rest]]
   ;; Sorts data header column name
@@ -112,7 +110,6 @@
          (add-col signature-header)
          (map #(clojure.string/join "," %))
          (write-file out-file))))
-
 
 (comment
   (def reg-file "./resources/2022_Lewis_Clark.csv")
