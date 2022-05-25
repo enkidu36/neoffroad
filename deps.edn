@@ -1,0 +1,14 @@
+{:path ["src" "resources"]
+ :deps {org.clojure/data.csv {:mvn/version "1.0.1"}
+        io.github.clojure/tools.build {:git/tag "v0.6.2" :git/sha "226fb52"}}
+ :aliases
+ {:run {:main-opts ["-m" "neoffroad.core"]}
+  :dev {}
+  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.2" :git/sha "226fb52"}}
+          :ns-default build}
+  :socket {:jvm-opts ["-Dclojure.server.repl={:port,50505,:accept,clojure.core.server/repl}"]}
+  :repl-server {:exec-fn clojure.core.server/start-server
+                :exec-args {:name "repl-server"
+                            :port 5555
+                            :accept clojure.core.server/repl
+                            :server-daemon false}}}}
