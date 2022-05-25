@@ -4,13 +4,15 @@
   (:import  java.io.Console)
     (:gen-class))
 
-(def rider-header-name "Registrant(s)")
-(def chip-header-name "Chip #")
-(def bib-header-name "Bib #")
-(def transponder-header-name "Transponder #")
-(def category-header-name "Category")
-(def division-header-name "Division")
-(def filter-by ["Registrant(s)" "Team Name" "Category" "Division"])
+(def rider-header "Registrant(s)")
+(def team-header "Team Name")
+(def chip-header "Chip #")
+(def bib-header "Bib #")
+(def transponder-header "Transponder #")
+(def category-header "Category")
+(def division-header "Division")
+(def signature-header "Signature")
+(def header-names ["Registrant(s)" "Team Name" "Category" "Division"])
 
 (defn read-file [infile]
   (with-open [r (io/reader infile)]
@@ -21,28 +23,32 @@
     (doseq [line data]
       (.write w (str line "\n")))))
 
- (defn add-rows  [[hdr & rest]]
+ (defn filter-cols [filter row]
+   (map #(nth row %) filter))
+
+(defn get-ndx [col-names [header]]
+  (map #(.indexOf header %) col-names))
+
+
+(defn remove-columns [header-names data]
+  (let [indexes (get-ndx header-names data)]
+    (map #(filter-cols indexes %) data)))
+
+ (defn add-columns  [[hdr & rest]]
    (let [header (-> hdr
-                    (conj transponder-header-name)
-                    (conj chip-header-name)
-                    (conj bib-header-name))
+                    (conj transponder-header)
+                    (conj chip-header)
+                    (conj bib-header))
          body (map #(-> % (conj "--") (conj "--") (conj "")) rest)]
      (conj body header)))
 
-(defn comp-names [r1 r2 col-ndx]
-  (compare (nth r1 col-ndx) (nth r2 col-ndx)))
 
-(defn sort-col [col-name [hdr & rest]]
-  (let [col-ndx (.indexOf hdr col-name)
-        body (sort #(comp-names %1 %2 col-ndx)  rest)]
+(defn sort-by-name [name [hdr & rest]]
+  ;; Sorts data header column name
+  (let [col-ndx (.indexOf hdr name)
+        body (sort #(compare (nth %1 col-ndx) (nth %2 col-ndx))  rest)]
     (conj body hdr)))
 
-(defn get-col-indexes [col-names [header]]
-  (map #(.indexOf header %) col-names))
-
- (defn filter-cols [filter row]
-   (map #(nth row %) filter))
- 
  (defn add-col [col-name [header & rest]]
   (let [body (map #(conj % "") (vec rest))]
     (conj body (conj (vec header) col-name))))
@@ -55,17 +61,17 @@
                       (assoc row c-ndx (if (= value "null") "" value))))]
     (conj body header)))
 
-(defn merge-cat-div [[header & rest]]
-  (let [c-ndx (.indexOf header category-header-name)
-        d-ndx (.indexOf header division-header-name)
+(defn merge-cat-div-columns [[header & rest]]
+  (let [c-ndx (.indexOf header category-header)
+        d-ndx (.indexOf header division-header)
         body (map #(assoc (vec %1) c-ndx (str (nth % c-ndx) " - " (nth % d-ndx))) rest)]
     (conj (map (fn [row] (filter #(not= (nth row d-ndx) %) row)) (vec body))
-     (filter #(not= division-header-name %) header))))
+     (filter #(not= division-header %) header))))
 
-(defn add-chips [chip-data rider-data]
- (let [chip-ndx (.indexOf (first rider-data) chip-header-name)
-       transponder-ndx (.indexOf (first rider-data) transponder-header-name)
-       name-ndx (.indexOf (first rider-data) rider-header-name)]
+(defn add-chip-data [chip-data rider-data]
+ (let [chip-ndx (.indexOf (first rider-data) chip-header)
+       transponder-ndx (.indexOf (first rider-data) transponder-header)
+       name-ndx (.indexOf (first rider-data) rider-header)]
     (loop [acc [(vec (first rider-data))]
            recs (rest rider-data)
            prev-rec ""
@@ -78,8 +84,6 @@
        (let [prev-name (when (not (empty? prev-rec)) (nth prev-rec name-ndx))
              rec (vec (first recs))
              name (nth rec name-ndx)
-             chip (nth rec chip-ndx)
-             transponder (nth rec transponder-ndx)
              previous? (= name prev-name)
              dups (if previous? (+ 1 dup-ctr) dup-ctr)
              counter (if previous? chip-ctr (+ 1 chip-ctr))
@@ -97,16 +101,15 @@
 (defn -main [in-file out-file chip-file]
   (prn (str "Hello Nebraska Offroad Series"))
    (let [data (read-file in-file)
-        chips (seq (read-file chip-file))
-        indexes (get-col-indexes filter-by data)]
+        chips (seq (read-file chip-file))]
     (->> data
-         (map #(filter-cols indexes %))
-         (add-rows)
-         (sort-col "Registrant(s)")
-         (merge-cat-div)
-         (add-chips chips)
-         (remove-null "Team Name")
-         (add-col "Signature")
+         (remove-columns header-names)
+         (add-columns)
+         (sort-by-name rider-header)
+         (merge-cat-div-columns)
+         (add-chip-data chips)
+         (remove-null team-header)
+         (add-col signature-header)
          (map #(clojure.string/join "," %))
          (write-file out-file))))
 
@@ -116,28 +119,7 @@
   (def sys-file "./resources/2022_LC_Timing_Registration.csv")
   (def chip-file "./resources/arkfeld-chip-ids.csv")
 
-
   (-main reg-file sys-file chip-file)
-
-  (defn de-dup-rider [in-file out-file chip-file]
-    (prn (str "Hello Nebraska Offroad Series"))
-    (let [data (read-file in-file)
-          chips (seq (read-file chip-file))
-          indexes (get-col-indexes filter-by data)]
-      (->> data
-           (map #(filter-cols indexes %))
-           (add-rows)
-           (sort-col "Registrant(s)")
-          ;;  (add-chip-ids chips)
-           )))
-
-
-
-  (def chips (read-file chip-file))
-  (def sorted-data (de-dup-rider reg-file sys-file chip-file))
-  (add-chip-ids-from-list chips sorted-data)
-  
-  
  
   ;; paredit practice
   ;; https://calva.io/paredit/
