@@ -1,8 +1,8 @@
 (ns neoffroad.core
   (:require [clojure.java.io :as io]
-            [clojure.data.csv :as csv])
-  (:import  java.io.Console)
-    (:gen-class))
+            [clojure.data.csv :as csv]
+            [clojure.string :as str])
+  (:gen-class))
 
 (def rider-header "Registrant(s)")
 (def team-header "Team Name")
@@ -13,7 +13,7 @@
 (def division-header "Division")
 (def signature-header "Signature")
 (def header-names [rider-header team-header category-header division-header])
-
+(def missing-list [26 28 35 58]) 
 (defn read-file [infile]
   (with-open [r (io/reader infile)]
     (vec (csv/read-csv r))))
@@ -65,41 +65,56 @@
         body (map #(assoc (vec %1) c-ndx (str (nth % c-ndx) " - " (nth % d-ndx))) rest)]
     (conj (map (fn [row] (filter #(not= (nth row d-ndx) %) row)) (vec body))
      (filter #(not= division-header %) header))))
+ 
+ (defn same? [val1 val2]
+   (= (->> val1 (str/trim) (str/lower-case)) 
+      (->> val2 (str/trim) (str/lower-case))))
 
 (defn add-chip-data [chip-data rider-data]
- (let [chip-ndx (.indexOf (first rider-data) chip-header)
-       transponder-ndx (.indexOf (first rider-data) transponder-header)
-       name-ndx (.indexOf (first rider-data) rider-header)]
+ (let [chip-col (.indexOf (first rider-data) chip-header)
+       transponder-col (.indexOf (first rider-data) transponder-header)
+       name-col (.indexOf (first rider-data) rider-header)]
     (loop [acc [(vec (first rider-data))]
            recs (rest rider-data)
            prev-rec ""
            chip-ctr -1
            dup-ctr 0]
-     (if (or (empty? recs))
+     (if  (empty? recs)
        (do
          (prn (str  dup-ctr " riders signed up for two races"))
          acc)
-       (let [prev-name (when (not (empty? prev-rec)) (nth prev-rec name-ndx))
+       (let [prev-name (if (seq prev-rec) (nth prev-rec name-col) "")
              rec (vec (first recs))
-             name (nth rec name-ndx)
-             previous? (= name prev-name)
+             name (nth rec name-col)
+             previous? (same? name prev-name)
              dups (if previous? (+ 1 dup-ctr) dup-ctr)
              counter (if previous? chip-ctr (+ 1 chip-ctr))
              upd-rec (if previous?
                        (-> rec
-                           (assoc chip-ndx (nth prev-rec chip-ndx))
-                           (assoc transponder-ndx (nth prev-rec transponder-ndx)))
+                           (assoc chip-col (nth prev-rec chip-col))
+                           (assoc transponder-col (nth prev-rec transponder-col)))
                        (-> rec
-                           (assoc chip-ndx (+ 1 counter))
-                           (assoc transponder-ndx (first (nth chip-data counter)))))]
+                           (assoc chip-col (first (nth chip-data counter)))
+                           (assoc transponder-col (second (nth chip-data counter)))))]
 
          (recur (conj acc upd-rec) (rest recs) upd-rec counter dups)))))
  )
 
+(defn filter-chips [chips]
+  (let [list (mapv #(conj (vector %2) (first %1)) chips (range 1 (+ 1 (count chips))))]
+    
+    (filterv (fn [x]
+               (not-any? #(= (first x) %) missing-list)) list)))
+
+(comment
+  (not-any? #(= 29 %) [28 40 40])
+  (def chip-file "./resources/arkfeld-chip-ids.csv")
+  (prn (filter-chips (read-file chip-file))))
+
 (defn -main [in-file out-file chip-file]
   (prn (str "Hello Nebraska Offroad Series"))
    (let [data (read-file in-file)
-        chips (seq (read-file chip-file))]
+        chips (filter-chips (seq (read-file chip-file)))]
     (->> data
          (remove-columns header-names)
          (add-columns)
@@ -108,16 +123,20 @@
          (add-chip-data chips)
          (remove-null team-header)
          (add-col signature-header)
-         (map #(clojure.string/join "," %))
+         (map #(str/join "," %))
          (write-file out-file))))
 
+
+
 (comment
-  (def reg-file "./resources/2022_Lewis_Clark.csv")
-  (def sys-file "./resources/2022_LC_Timing_Registration.csv")
+  (def reg-file "./resources/2022_tranquility_tire-fire.csv")
+  (def sys-file "./resources/2022_tranquility_tire-fire_master.csv")
   (def chip-file "./resources/arkfeld-chip-ids.csv")
 
   (-main reg-file sys-file chip-file)
- 
+
+
+
   ;; paredit practice
   ;; https://calva.io/paredit/
   (let [s [1 2 3 4 5]]
@@ -125,7 +144,8 @@
          (map (partial * (apply + [1 2 3])))
          (repeat 4)
          (zipmap (range 4))))
-  ()
+  
+  
   )
 
 
