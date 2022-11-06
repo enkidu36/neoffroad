@@ -14,7 +14,7 @@
 (def transponder "Transponder")
 (def signature "Signature")
 (def filter-headers [first-name last-name category team])
-(def missing-list [26 28 35 57])
+(def missing-list [26 28 35 42 57])
 
 (defn read-file [infile]
   (with-open [r (io/reader infile)]
@@ -30,7 +30,7 @@
                 (conj transponder)
                 (conj chip)
                 (conj bib))
-        body (map #(-> % (conj "--") (conj "--") (conj "--")) rest)]
+        body (map #(-> % (conj "") (conj "") (conj "")) rest)]
     (conj body hdr)))
 
 (defn sort-by-name [name [hdr & rest]]
@@ -50,9 +50,6 @@
                       value (nth row c-ndx)]
                   (assoc row c-ndx (if (= value "null") "" value))))]
     (conj body header)))
-
-
-
 
 (defn merge-name-columns [to-col [header & rest]]
   (let [last-ndx (.indexOf header last-name)
@@ -134,26 +131,18 @@
       (add-chip-data chips $)
       (remove-null team $)
       (rename-col category "Category" $)
-      (add-col signature "*" $)
+      (add-col signature "" $)
       (map #(str/join "," %) $)
       (write-file out-file $))))
 
 (comment
-  (def infile "./resources/test.csv")
-  (def outfile "./resources/test-out")
+  (def infile "./resources/cunningham-cx-bikereg.csv")
+  (def outfile "./resources/cunningham-cx-system.csv")
   (def chipfile "./resources/arkfeld-chip-ids.csv")
-  (def chips (filter-chips (seq (read-file chipfile))))
+  ;; (def chips (filter-chips (seq (read-file chipfile))))
   (-main infile outfile chipfile)
+  )
 
-  (def t-data (read-file infile))
-  (def headers (first t-data))
-
-  (defn process [data chips]
-    (as-> data $
-      (rename-col category "Category" $))
-        ;;  (write-file outfile $)
-    )
-  (prn (process t-data chips)))
 
 
 

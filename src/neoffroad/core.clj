@@ -13,7 +13,7 @@
 (def division-header "Division")
 (def signature-header "Signature")
 (def header-names [rider-header team-header category-header division-header])
-(def missing-list [26 28 35 58])
+(def missing-list [26 28 35 42 57])
 
 (defn read-file [infile]
   (with-open [r (io/reader infile)]
@@ -120,8 +120,8 @@
          (write-file out-file))))
 
 (comment
-  (def reg-file "./resources/2022_tranquility_tire-fire.csv")
-  (def sys-file "./resources/2022_tranquility_tire-fire-master.csv")
+  (def reg-file "./resources/2022_calvin-crest.csv")
+  (def sys-file "./resources/2022_calvin-crest-master.csv")
   (def chip-file "./resources/arkfeld-chip-ids.csv")
 
   (-main reg-file sys-file chip-file))
