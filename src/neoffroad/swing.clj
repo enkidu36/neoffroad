@@ -2,20 +2,16 @@
    (:import  [javax.swing SwingUtilities JFrame JLabel])
 )
 
-(defn hello []
-  (prn "hello"))
+(defn main-frame []
+  (doto (JFrame. "Registration")
+    (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
+    (.setSize 800 800)))
 
-(hello)
+(defn create-and-show-gui []
 
-(defn create-and-show-gui
-  []
-
-  (let [my-frame (doto (JFrame. "My Frame")
-                   (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE))
-        my-label (JLabel. "Hello UI")
+  (let [my-frame (main-frame)
         content-pane (.getContentPane  my-frame)]
-
-    (.add content-pane my-label)
+    (.add content-pane (JLabel. "Hello U"))
     (.pack my-frame)
     (.setVisible my-frame true)))
 
